@@ -11,8 +11,8 @@ except ImportError:
 # Set up where we'll be fetching data from
 DATA_SOURCE = secrets['nightscout_url']
 BG_VALUE = [0, 'sgv']
-BG_DIRECTION = [0, 'direction']
-DATA_AGE = [0, 'date'] # This is in GMT time
+BG_DIRECTION = [0, 'direction'] # TODO: When in need of calibration, direction won't be present and will crash the code.
+DATA_AGE = [0, 'date'] # This is in epoch time
 
 # Alert Colors
 RED = 0xFF0000;     # CRIT HIGH, CRIT LOW
@@ -28,7 +28,6 @@ CRIT_LOW = 60
 WARN_LOW = 80
 
 def stale_data(timestamp):
-
     # stale results is the age at which results are no longer considered valid.
     # This is in minutes
     stale_time = 6
@@ -37,15 +36,8 @@ def stale_data(timestamp):
     epoch_time = time.time()
     print("Epoch GMT time:", epoch_time)
 
-    current_time_str = str(timestamp)
-
-    # nightscout sends a higher percision then is necessary and does not use dot notation
-    # so we need to cut the last three 0's off the end
-    current_time_str = current_time_str[:-3] 
-    current_time_int = int(current_time_str)
-
     # The number of minutes ago that the data was last checked
-    last_check = (epoch_time - current_time_int) /60
+    last_check = (epoch_time - timestamp) /60
     print("Data age: ", last_check)
 
     if last_check > stale_time:
@@ -73,6 +65,8 @@ def text_transform_bg(val):
     return str(val) + ' mg/dl'
 
 def text_transform_direction(val):
+    if val == "NONE":
+        return "↔"
     if val == "Flat":
         return "→"
     if val == "SingleUp":
@@ -126,7 +120,7 @@ while True:
     try:
         value = pyportal.fetch()
         print("Getting time from internet!")
-        pyportal.get_local_time(location="Africa/Abidjan")
+        pyportal.get_local_time(location=secrets['timezone'])
         pyportal.set_background(get_bg_color(value[0], value[2]))
         print("Response is", value)
 
